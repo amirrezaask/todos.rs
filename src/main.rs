@@ -1,37 +1,32 @@
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder, Result};
+use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use serde::{Deserialize, Serialize};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Todo {
     pub text: String,
-
-    // #[serde(default)]
     checked: Option<bool>,
 }
-struct Database {
-    actual: Mutex<Vec<Todo>>,
-}
+
+struct Database(Mutex<Vec<Todo>>);
 
 impl Database {
     fn new() -> Self {
-        Database {
-            actual: Mutex::new(Vec::new()),
-        }
+        Database(Mutex::new(Vec::new()))
     }
 }
 
-#[get("/todos/{id}")]
-async fn index(db: web::Data<Database>, id: web::Path<i32>) -> impl Responder {
-    println!("{}", id);
-    HttpResponse::Ok().json(&db.actual)
+#[get("/todos")]
+async fn index(db: web::Data<Database>) -> impl Responder {
+    println!("{:?}", db.0);
+    HttpResponse::Ok().json(&db.0)
 }
 
 #[post("/todos")]
-async fn new(/*db: web::Data<Database>,*/ todo: web::Json<Todo>) -> impl Responder {
-    // let mut rows = db.actual.lock().unwrap();
-    println!("{:?}", todo);
-    // (*rows).push(todo.0);
+async fn new(db: web::Data<Database>, mut todo: web::Json<Todo>) -> impl Responder {
+    let mut rows = db.0.lock().unwrap();
+    todo.0.checked = None;
+    (*rows).push(todo.0);
     HttpResponse::Created()
 }
 

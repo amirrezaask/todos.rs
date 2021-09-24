@@ -4,13 +4,13 @@ use rusqlite::Row;
 use serde::{Deserialize, Serialize};
 
 static GET_ALL_TODOS: &str = r#"SELECT * FROM todos"#;
-
+static ADD_TODO: &str = "INSERT INTO todos (title) VALUES (?1)";
 type Pool = r2d2::Pool<r2d2_sqlite::SqliteConnectionManager>;
-type Connection = r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>;
 
 #[derive(Serialize, Deserialize)]
 struct Todo {
     title: String,
+    #[serde(default)]
     done: bool,
 }
 impl Todo {
@@ -20,6 +20,14 @@ impl Todo {
             done: row.get_unwrap("done"),
         }
     }
+}
+#[actix_web::post("/")]
+async fn new(db: web::Data<Pool>, todo: web::Json<Todo>) -> impl Responder {
+    let conn = db.get().unwrap();
+    let mut stmt = conn.prepare(ADD_TODO).unwrap();
+    db.get().unwrap().execute(ADD_TODO, &[&todo.title]).unwrap();
+
+    HttpResponse::Created()
 }
 #[actix_web::get("/")]
 async fn index(db: web::Data<Pool>) -> impl Responder {
@@ -48,7 +56,7 @@ async fn main() -> std::io::Result<()> {
     let manager = SqliteConnectionManager::file("todos.db");
     let pool = Pool::new(manager).unwrap();
 
-    HttpServer::new(move || App::new().service(index).data(pool.clone()))
+    HttpServer::new(move || App::new().service(index).service(new).data(pool.clone()))
         .bind("127.0.0.1:8080")?
         .run()
         .await

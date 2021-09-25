@@ -3,39 +3,24 @@ extern crate rocket;
 
 use rocket::{http::Status, serde::json::Json};
 
-use rocket_sync_db_pools::{database, rusqlite::Row};
-
 use serde::{Deserialize, Serialize};
 
 static GET_ALL_TODOS: &str = r#"SELECT * FROM todos"#;
 static ADD_TODO: &str = "INSERT INTO todos (title) VALUES (?1)";
 
-type Connection = rocket_sync_db_pools::rusqlite::Connection;
+#[derive(sqlx::Database)]
+#[database("sqlx")]
+struct Db(sqlx::SqlitePool);
 
-#[database("todos")]
-struct TodosDb(Connection);
-
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, sqlx::FromRow)]
 pub struct Todo {
     pub title: String,
     #[serde(default)]
     pub done: bool,
 }
 
-impl Todo {
-    pub fn new(title: String) -> Todo {
-        Todo { title, done: false }
-    }
-    pub fn from_row(row: &Row) -> Self {
-        Todo {
-            title: row.get_unwrap(1),
-            done: row.get_unwrap(2),
-        }
-    }
-}
-
 #[get("/todos")]
-async fn list(db: TodosDb) -> Json<Vec<Todo>> {
+async fn list(db: Db) -> Json<Vec<Todo>> {
     let todos = db
         .run(|c| {
             let mut stmt = c.prepare(GET_ALL_TODOS).unwrap();

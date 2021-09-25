@@ -1,8 +1,10 @@
 # Todos.rs
-## Benchamrks
+
+
+# Benchamrks
 | Libs          | RPS             
 | ------------- | -------------
-| [actix-web](https://actix.rs/) + [sqlx](https://github.com/launchbadge/sqlx)      | 5172.07
-| [actix-web](https://actix.rs/) + [rusqlite](https://github.com/rusqlite/rusqlite)      | 20270.46 
-| [rocket](https://rocket.rs/) + [rusqlite](https://github.com/rusqlite/rusqlite) | 6973.83
-| [rocket](https://rocket.rs/) + [sqlx](https://github.com/launchbadge/sqlx) | 6127.07
+| [Actix web + sqlx](https://github.com/amirrezaask/todos.rs/tree/actix-web-sqlx)      | 5172.07
+| [Actix web + rusqlite](https://github.com/amirrezaask/todos.rs/tree/actix-web-rusqlite)      | 20270.46 
+| [Rocket + rusqlite](https://github.com/amirrezaask/todos.rs/tree/rocket-rusqlite) | 6973.83
+| [Rocket + sqlx](https://github.com/amirrezaask/todos.rs/tree/rocket-sqlx) | 6127.07

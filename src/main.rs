@@ -1,16 +1,16 @@
 #[macro_use]
 extern crate rocket;
 
-use rocket::{http::Status, serde::json::Json};
-
+use rocket::{http::Status, serde::json::Json, State};
 use serde::{Deserialize, Serialize};
+use sqlx::sqlite::Sqlite;
+
+use std::sync::Arc;
 
 static GET_ALL_TODOS: &str = r#"SELECT * FROM todos"#;
 static ADD_TODO: &str = "INSERT INTO todos (title) VALUES (?1)";
 
-#[derive(sqlx::Database)]
-#[database("sqlx")]
-struct Db(sqlx::SqlitePool);
+type Db = sqlx::Pool<Sqlite>;
 
 #[derive(Serialize, Deserialize, Clone, sqlx::FromRow)]
 pub struct Todo {
@@ -19,48 +19,33 @@ pub struct Todo {
     pub done: bool,
 }
 
-#[get("/todos")]
-async fn list(db: Db) -> Json<Vec<Todo>> {
-    let todos = db
-        .run(|c| {
-            let mut stmt = c.prepare(GET_ALL_TODOS).unwrap();
-            let mut rows = stmt.query([]).unwrap();
-            let mut todos = Vec::new();
-            loop {
-                match rows.next() {
-                    Ok(opt) => match opt {
-                        Some(row) => todos.push(Todo::from_row(row)),
-                        None => break,
-                    },
-                    Err(err) => {
-                        println!("err {}", err);
-                        break;
-                    }
-                }
-            }
-            todos
-        })
-        .await;
+#[get("/")]
+async fn list(db: &State<Db>) -> Json<Vec<Todo>> {
+    let mut conn = db.acquire().await.unwrap();
+    let todos: Vec<Todo> = sqlx::query_as(GET_ALL_TODOS)
+        .fetch_all(&mut conn)
+        .await
+        .unwrap();
 
     Json(todos)
 }
 
-#[post("/todos", data = "<todo>")]
-async fn add(db: TodosDb, todo: Json<Todo>) -> Status {
-    db.run(move |c| {
-        c.prepare(ADD_TODO)
-            .unwrap()
-            .execute(&[&todo.0.title])
-            .unwrap()
-    })
-    .await;
-
+#[post("/", data = "<todo>")]
+async fn add(db: &State<Db>, todo: Json<Todo>) -> Status {
+    let mut conn = db.acquire().await.unwrap();
+    let todo_id = sqlx::query("INSERT INTO todos (title) VALUES (?)")
+        .bind(&todo.title)
+        .execute(&mut conn)
+        .await
+        .unwrap()
+        .last_insert_rowid();
     Status::Created
 }
 
 #[launch]
-fn rocket() -> _ {
+async fn rocket() -> _ {
+    let pool = sqlx::sqlite::SqlitePool::connect("todos.db").await.unwrap();
     rocket::build()
-        .attach(TodosDb::fairing())
+        .manage(pool.clone())
         .mount("/", routes![list, add])
 }

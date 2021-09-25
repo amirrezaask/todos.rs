@@ -10,6 +10,3 @@ rocket = {version = "0.5.0-rc.1", features = [ "json" ]}
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sqlx = { version = "0.5", features = [ "runtime-async-std-native-tls", "sqlite", "macros"] }
-[dependencies.rocket_db_pools]
-version = "0.1.0-rc"
-features = ["sqlx_sqlite"]

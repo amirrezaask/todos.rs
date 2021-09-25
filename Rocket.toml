@@ -1,2 +1,4 @@
+[default]
+log_level = "off"
 [global.databases]
 todos = { url = "todos.db" }
